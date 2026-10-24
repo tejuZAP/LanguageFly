@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile & Language</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="panel">
+    <header class="heading">
+      <div class="logo" aria-hidden="true">文</div>
+      <div>
+        <h1>Your profile</h1>
+        <p>Personalize your language experience</p>
+      </div>
+    </header>
+
+    <form id="profile-form">
+      <section>
+        <h2>Profile information</h2>
+        <label for="display-name">Name</label>
+        <input id="display-name" name="displayName" type="text" maxlength="80"
+               placeholder="How should we address you?" autocomplete="name" required>
+
+        <label for="native-language">Your language</label>
+        <select id="native-language" name="nativeLanguage" required>
+          <option value="">Choose your language</option>
+          <option value="English">English</option>
+          <option value="Spanish">Spanish</option>
+          <option value="French">French</option>
+          <option value="German">German</option>
+          <option value="Italian">Italian</option>
+          <option value="Portuguese">Portuguese</option>
+          <option value="Chinese">Chinese</option>
+          <option value="Japanese">Japanese</option>
+          <option value="Korean">Korean</option>
+          <option value="Arabic">Arabic</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Yoruba">Yoruba</option>
+          <option value="Russian">Russian</option>
+          <option value="Other">Other</option>
+        </select>
+      </section>
+
+      <section>
+        <h2>Translation preferences</h2>
+        <label for="target-language">Target language</label>
+        <select id="target-language" name="targetLanguage" required>
+          <option value="">Choose target language</option>
+          <option value="English">English</option>
+          <option value="Spanish">Spanish</option>
+          <option value="French">French</option>
+          <option value="German">German</option>
+          <option value="Italian">Italian</option>
+          <option value="Portuguese">Portuguese</option>
+          <option value="Chinese">Chinese</option>
+          <option value="Japanese">Japanese</option>
+          <option value="Korean">Korean</option>
+          <option value="Arabic">Arabic</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Yoruba">Yoruba</option>
+          <option value="Russian">Russian</option>
+        </select>
+
+        <label for="notes">About you <span>(optional)</span></label>
+        <textarea id="notes" name="notes" rows="3" maxlength="500"
+          placeholder="Any language or reading preferences?"></textarea>
+      </section>
+
+      <button type="submit" id="save-button">Save profile</button>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </form>
+    <footer>Preferences are stored locally and can be synced to your backend.</footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

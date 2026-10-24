@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Profile & Language Assistant",
+  "version": "1.0.0",
+  "description": "Save profile preferences and choose a target language.",
+  "action": {
+    "default_title": "Profile & Language",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["storage"]
+}
