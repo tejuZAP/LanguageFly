@@ -114,8 +114,8 @@ def save_profile(payload: ProfileInput):
 def get_languages():
     return {
         "languages": [
-            "Arabic", "Chinese", "Dutch", "English", "French", "German",
-            "Hindi", "Italian", "Japanese", "Korean", "Nigerian Pidgin",
-            "Portuguese", "Russian", "Spanish", "Turkish", "Yoruba"
+            "Arabic", "Chinese", "English", "French", "German",
+            "Hindi", "Italian", "Japanese", "Korean", "Portuguese", 
+            "Russian", "Spanish", "Yoruba"
         ]
     }
