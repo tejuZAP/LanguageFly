@@ -7,5 +7,27 @@
     "default_title": "Profile & Language",
     "default_popup": "popup.html"
   },
-  "permissions": ["storage"]
+  "permissions": ["storage", "activeTab"]
+  ,"host_permissions": [
+    "https://*.wikipedia.org/*",
+    "https://wikipedia.org/*",
+    "https://*.bbc.com/*",
+    "https://bbc.com/*",
+    "https://*.bbc.co.uk/*",
+    "https://bbc.co.uk/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.wikipedia.org/*",
+        "https://wikipedia.org/*",
+        "https://*.bbc.com/*",
+        "https://bbc.com/*",
+        "https://*.bbc.co.uk/*",
+        "https://bbc.co.uk/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

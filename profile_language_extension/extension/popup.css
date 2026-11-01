@@ -51,3 +51,34 @@ button:disabled { opacity: .65; cursor: wait; }
 .status.success { color: #167447; }
 .status.error { color: #b42318; }
 footer { margin-top: 12px; color: var(--muted); font-size: 11px; text-align: center; }
+
+.page-reader {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f3ff;
+  border-radius: 10px;
+}
+
+.page-reader h3 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+#read-page-button {
+  width: 100%;
+  padding: 10px;
+  background: #6c4ce4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#page-content {
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.5;
+}
