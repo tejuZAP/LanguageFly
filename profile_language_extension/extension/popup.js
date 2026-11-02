@@ -120,6 +120,11 @@ async function getCurrentPageContent() {
 
 // Connect the Read Page button.
 const readPageButton = document.querySelector("#read-page-button");
+const pageStatus = document.querySelector("#page-status");
+const pageContent = document.querySelector("#page-content");
+
+const PAGE_CONTENT_API_URL =
+  "http://127.0.0.1:8000/api/page-content";
 
 if (readPageButton) {
   readPageButton.addEventListener(
@@ -132,3 +137,62 @@ loadProfile().catch((error) => {
   console.error("Could not load saved profile:", error);
   showStatus("Could not load saved profile.", "error");
 });
+async function readAndSendPage() {
+  readPageButton.disabled = true;
+  pageStatus.textContent = "Reading webpage...";
+
+  try {
+    // Find the active browser tab.
+    const tabs = await browser.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+    const tab = tabs[0];
+
+    if (!tab || !tab.id) {
+      throw new Error("No active webpage found.");
+    }
+
+    // Request text from content.js.
+    const pageInfo = await browser.tabs.sendMessage(
+      tab.id,
+      { type: "GET_PAGE_CONTENT" }
+    );
+
+    if (!pageInfo || !pageInfo.text) {
+      throw new Error("No readable webpage text found.");
+    }
+
+    // Display the extracted text.
+    pageContent.textContent = pageInfo.text;
+
+    pageStatus.textContent = "Sending text to backend...";
+
+    // Send webpage information to Python.
+    const response = await fetch(PAGE_CONTENT_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(pageInfo)
+    });
+
+    if (!response.ok) {
+      throw new Error("Backend could not save webpage text.");
+    }
+
+    const result = await response.json();
+
+    pageStatus.textContent =
+      `Successfully sent to backend. Article ID: ${result.id}`;
+
+  } catch (error) {
+    console.error(error);
+    pageStatus.textContent = error.message;
+  } finally {
+    readPageButton.disabled = false;
+  }
+}
+
+readPageButton.addEventListener("click", readAndSendPage);

@@ -56,6 +56,36 @@ class ProfileInput(BaseModel):
     targetLanguage: str = Field(min_length=1, max_length=80)
     notes: str = Field(default="", max_length=500)
 
+class PageContentInput(BaseModel):
+    url: str
+    title: str
+    hostname: str = ""
+    language: str | None = None
+    text: str = Field(min_length=40, max_length=20000)
+    extractedAt: str = ""
+
+class PageContent(Base):
+    __tablename__ = "page_contents"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True
+    )
+
+    url: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+
+    title: Mapped[str] = mapped_column(
+        String(500), nullable=False
+    )
+
+    text: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+
+    language: Mapped[str] = mapped_column(
+        String(80), default=""
+    )
 
 def serialize(profile: Profile) -> dict:
     return {
@@ -109,6 +139,27 @@ def save_profile(payload: ProfileInput):
         session.refresh(profile)
         return serialize(profile)
 
+@app.post("/api/page-content")
+def save_page_content(payload: PageContentInput):
+
+    with SessionLocal() as session:
+
+        page = PageContent(
+            url=payload.url,
+            title=payload.title,
+            text=payload.text,
+            language=payload.language or ""
+        )
+
+        session.add(page)
+        session.commit()
+        session.refresh(page)
+
+        return {
+            "message": "Webpage content saved successfully",
+            "id": page.id,
+            "title": page.title
+        }
 
 @app.get("/api/languages")
 def get_languages():
