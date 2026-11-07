@@ -1,21 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Profile & Language Assistant",
+  "name": "Language Fly",
   "version": "1.0.0",
-  "description": "Save profile preferences and choose a target language.",
-  "action": {
-    "default_title": "Profile & Language",
-    "default_popup": "popup.html"
-  },
-  "permissions": ["storage", "activeTab"]
-  ,"host_permissions": [
+  "description": "Learn vocabulary while browsing webpages.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
     "https://*.wikipedia.org/*",
     "https://wikipedia.org/*",
     "https://*.bbc.com/*",
     "https://bbc.com/*",
     "https://*.bbc.co.uk/*",
-    "https://bbc.co.uk/*"
+    "https://bbc.co.uk/*",
+    "http://127.0.0.1:8000/*"
   ],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "content_scripts": [
     {
       "matches": [

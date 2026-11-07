@@ -6,6 +6,47 @@ from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Integer, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
+import spacy
+from functools import lru_cache
+from collections import Counter, defaultdict
+from fastapi import HTTPException
+from pydantic import BaseModel, Field
+
+SPACY_MODELS = {
+    "english": "en_core_web_sm",
+    "en": "en_core_web_sm",
+
+    "spanish": "es_core_news_sm",
+    "es": "es_core_news_sm",
+
+    "french": "fr_core_news_sm",
+    "fr": "fr_core_news_sm",
+
+    "german": "de_core_news_sm",
+    "de": "de_core_news_sm",
+
+    "italian": "it_core_news_sm",
+    "it": "it_core_news_sm",
+
+    "portuguese": "pt_core_news_sm",
+    "pt": "pt_core_news_sm",
+
+    "chinese": "zh_core_web_sm",
+    "zh": "zh_core_web_sm",
+
+    "japanese": "ja_core_news_sm",
+    "ja": "ja_core_news_sm",
+
+    "korean": "ko_core_news_sm",
+    "ko": "ko_core_news_sm",
+
+    "dutch": "nl_core_news_sm",
+    "nl": "nl_core_news_sm",
+
+    "russian": "ru_core_news_sm",
+    "ru": "ru_core_news_sm"
+}
+
 DATABASE_URL = "sqlite:///./profiles.db"
 
 engine = create_engine(
@@ -49,6 +90,10 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
+class VocabularyRequest(BaseModel):
+    text: str = Field(min_length=40, max_length=20000)
+    language: str = "english"
+    max_results: int = Field(default=20, ge=1, le=100)
 
 class ProfileInput(BaseModel):
     displayName: str = Field(min_length=1, max_length=80)
@@ -170,3 +215,123 @@ def get_languages():
             "Russian", "Spanish", "Yoruba"
         ]
     }
+
+def extract_vocabulary(text, language="english", max_results=20):
+
+    nlp = get_language_model(language)
+
+    doc = nlp(text)
+
+    word_counts = Counter()
+    word_examples = defaultdict(str)
+    word_types = {}
+
+    for token in doc:
+
+        if not token.is_alpha:
+            continue
+
+        if token.is_stop:
+            continue
+
+        if len(token.text) < 3:
+            continue
+
+        if token.pos_ not in ["NOUN", "VERB", "ADJ", "ADV"]:
+            continue
+
+        word = token.lemma_.lower()
+
+        word_counts[word] += 1
+
+        word_types[word] = token.pos_
+
+        if not word_examples[word]:
+            word_examples[word] = token.sent.text.strip()
+
+    vocabulary = []
+
+    for word, count in word_counts.most_common(max_results):
+
+        vocabulary.append({
+            "word": word,
+            "frequency": count,
+            "part_of_speech": word_types[word],
+            "example": word_examples[word]
+        })
+
+    return vocabulary
+
+@app.post("/api/vocabulary")
+def get_vocabulary(payload: VocabularyRequest):
+
+    vocabulary = extract_vocabulary(
+        text=payload.text,
+        language=payload.language,
+        max_results=payload.max_results
+    )
+
+    return {
+        "message": "Vocabulary extracted successfully",
+        "language": payload.language,
+        "total_words": len(vocabulary),
+        "vocabulary": vocabulary
+    }
+
+@app.post("/api/page-content/{page_id}/vocabulary")
+def get_saved_page_vocabulary(page_id: int):
+
+    with SessionLocal() as session:
+
+        page = session.get(PageContent, page_id)
+
+        if page is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Webpage not found."
+            )
+
+        vocabulary = extract_vocabulary(page.text)
+
+        return {
+            "page_id": page.id,
+            "page_title": page.title,
+            "message": "Vocabulary extracted successfully",
+            "total_words": len(vocabulary),
+            "vocabulary": vocabulary
+        }
+
+@lru_cache(maxsize=20)
+def get_language_model(language):
+
+    language = language.lower().strip()
+
+    # Handle language codes such as en-US or es-ES.
+    language = language.split("-")[0]
+
+    model_name = SPACY_MODELS.get(language)
+
+    if not model_name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Language '{language}' is not supported."
+        )
+
+    try:
+        return spacy.load(model_name)
+
+    except OSError:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"The spaCy model {model_name} is not installed. "
+                f"Install it using: python -m spacy download {model_name}"
+            )
+        )
+
+{
+    "word": word,
+    "frequency": count,
+    "part_of_speech": word_types[word],
+    "example": word_examples[word]
+}

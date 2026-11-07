@@ -82,3 +82,71 @@ footer { margin-top: 12px; color: var(--muted); font-size: 11px; text-align: cen
   font-size: 13px;
   line-height: 1.5;
 }
+
+.vocabulary-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f3ff;
+  border-radius: 10px;
+}
+
+.vocabulary-section h2 {
+  margin-top: 0;
+  font-size: 17px;
+}
+
+#analyze-page-button {
+  width: 100%;
+  padding: 11px;
+  background: #6c4ce4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#analyze-page-button:hover {
+  background: #5838c7;
+}
+
+#analyze-page-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#vocabulary-status {
+  font-size: 13px;
+  margin: 12px 0;
+}
+
+.vocabulary-card {
+  background: white;
+  padding: 10px;
+  margin-top: 9px;
+  border-radius: 7px;
+  border: 1px solid #ddd6fe;
+}
+
+.vocabulary-card h3 {
+  margin: 0 0 5px;
+  color: #4c35a8;
+  font-size: 16px;
+}
+
+.vocabulary-details {
+  font-size: 12px;
+  color: #555;
+  margin: 4px 0;
+}
+
+.vocabulary-example {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+
+#vocabulary-results {
+  max-height: 300px;
+  overflow-y: auto;
+}
