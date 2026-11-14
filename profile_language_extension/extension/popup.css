@@ -150,3 +150,10 @@ footer { margin-top: 12px; color: var(--muted); font-size: 11px; text-align: cen
   max-height: 300px;
   overflow-y: auto;
 }
+
+.vocabulary-translation {
+  font-size: 15px;
+  font-weight: bold;
+  color: #21804b;
+  margin: 5px 0;
+}

@@ -123,9 +123,16 @@ async function getCurrentPageContent() {
 
 // Send webpage text to the Python vocabulary API.
 async function requestVocabulary(pageInfo) {
-  // The webpage language is the source language being analyzed.
-  // Examples: en, es, fr, de, it.
-  const language = pageInfo.language || "english";
+
+  // Get the saved user profile.
+  const local = await browser.storage.local.get("profile");
+  const profile = local.profile;
+
+  if (!profile || !profile.targetLanguage) {
+    throw new Error(
+      "Please save your profile and choose a target language first."
+    );
+  }
 
   const response = await fetch(VOCABULARY_API_URL, {
     method: "POST",
@@ -134,19 +141,20 @@ async function requestVocabulary(pageInfo) {
     },
     body: JSON.stringify({
       text: pageInfo.text,
-      language: language,
+      language: pageInfo.language || "english",
+      target_language: profile.targetLanguage,
       max_results: 20
     })
   });
 
   if (!response.ok) {
-    let errorMessage = `Vocabulary API returned ${response.status}`;
+    let errorMessage = "Could not retrieve vocabulary.";
 
     try {
       const errorData = await response.json();
       errorMessage = errorData.detail || errorMessage;
     } catch {
-      // Keep the default error message.
+      // Use the default error message.
     }
 
     throw new Error(errorMessage);
@@ -157,20 +165,28 @@ async function requestVocabulary(pageInfo) {
 
 // Display vocabulary results in the extension popup.
 function displayVocabulary(vocabulary) {
+
   vocabularyResults.replaceChildren();
 
   if (!vocabulary || vocabulary.length === 0) {
     vocabularyResults.textContent =
-      "No vocabulary words were found on this page.";
+      "No vocabulary words were found.";
+
     return;
   }
 
   vocabulary.forEach((item) => {
+
     const card = document.createElement("div");
     card.className = "vocabulary-card";
 
     const word = document.createElement("h3");
     word.textContent = item.word;
+
+    const translation = document.createElement("p");
+    translation.className = "vocabulary-translation";
+    translation.textContent =
+      `Translation: ${item.translation}`;
 
     const details = document.createElement("p");
     details.className = "vocabulary-details";
@@ -179,11 +195,16 @@ function displayVocabulary(vocabulary) {
 
     const example = document.createElement("p");
     example.className = "vocabulary-example";
-    example.textContent = item.example
-      ? `Example: ${item.example}`
-      : "No example sentence available.";
+    example.textContent =
+      `Example: ${item.example}`;
 
-    card.append(word, details, example);
+    card.append(
+      word,
+      translation,
+      details,
+      example
+    );
+
     vocabularyResults.appendChild(card);
   });
 }

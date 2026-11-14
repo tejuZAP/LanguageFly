@@ -12,6 +12,10 @@ from collections import Counter, defaultdict
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
+import requests
+import html
+from functools import lru_cache
+
 SPACY_MODELS = {
     "english": "en_core_web_sm",
     "en": "en_core_web_sm",
@@ -46,6 +50,37 @@ SPACY_MODELS = {
     "russian": "ru_core_news_sm",
     "ru": "ru_core_news_sm"
 }
+
+LANGUAGE_CODES = {
+    "english": "en",
+    "en": "en",
+    "spanish": "es",
+    "es": "es",
+    "french": "fr",
+    "fr": "fr",
+    "german": "de",
+    "de": "de",
+    "italian": "it",
+    "it": "it",
+    "portuguese": "pt",
+    "pt": "pt",
+    "chinese": "zh-CN",
+    "zh": "zh-CN",
+    "japanese": "ja",
+    "ja": "ja",
+    "korean": "ko",
+    "ko": "ko",
+    "dutch": "nl",
+    "nl": "nl",
+    "russian": "ru",
+    "ru": "ru"
+}
+
+def get_language_code(language):
+    normalized = language.lower().strip()
+    normalized = normalized.split("-")[0]
+
+    return LANGUAGE_CODES.get(normalized)
 
 DATABASE_URL = "sqlite:///./profiles.db"
 
@@ -93,6 +128,7 @@ app.add_middleware(
 class VocabularyRequest(BaseModel):
     text: str = Field(min_length=40, max_length=20000)
     language: str = "english"
+    target_language: str
     max_results: int = Field(default=20, ge=1, le=100)
 
 class ProfileInput(BaseModel):
@@ -216,10 +252,13 @@ def get_languages():
         ]
     }
 
-def extract_vocabulary(text, language="english", max_results=20):
-
+def extract_vocabulary(
+    text,
+    language="english",
+    target_language="spanish",
+    max_results=20
+):
     nlp = get_language_model(language)
-
     doc = nlp(text)
 
     word_counts = Counter()
@@ -243,7 +282,6 @@ def extract_vocabulary(text, language="english", max_results=20):
         word = token.lemma_.lower()
 
         word_counts[word] += 1
-
         word_types[word] = token.pos_
 
         if not word_examples[word]:
@@ -253,8 +291,15 @@ def extract_vocabulary(text, language="english", max_results=20):
 
     for word, count in word_counts.most_common(max_results):
 
+        translation = translate_word(
+            word,
+            language,
+            target_language
+        )
+
         vocabulary.append({
             "word": word,
+            "translation": translation or "Translation unavailable",
             "frequency": count,
             "part_of_speech": word_types[word],
             "example": word_examples[word]
@@ -268,12 +313,14 @@ def get_vocabulary(payload: VocabularyRequest):
     vocabulary = extract_vocabulary(
         text=payload.text,
         language=payload.language,
+        target_language=payload.target_language,
         max_results=payload.max_results
     )
 
     return {
-        "message": "Vocabulary extracted successfully",
-        "language": payload.language,
+        "message": "Vocabulary and translations retrieved successfully",
+        "source_language": payload.language,
+        "target_language": payload.target_language,
         "total_words": len(vocabulary),
         "vocabulary": vocabulary
     }
@@ -335,3 +382,44 @@ def get_language_model(language):
     "part_of_speech": word_types[word],
     "example": word_examples[word]
 }
+
+@lru_cache(maxsize=1000)
+def translate_word(word, source_language, target_language):
+
+    source_code = get_language_code(source_language)
+    target_code = get_language_code(target_language)
+
+    if not source_code or not target_code:
+        return None
+
+    if source_code == target_code:
+        return word
+
+    url = "https://api.mymemory.translated.net/get"
+
+    try:
+        response = requests.get(
+            url,
+            params={
+                "q": word,
+                "langpair": f"{source_code}|{target_code}"
+            },
+            timeout=10
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        translation = data.get(
+            "responseData", {}
+        ).get("translatedText")
+
+        if translation:
+            return html.unescape(translation)
+
+        return None
+
+    except requests.RequestException as error:
+        print(f"Translation error for '{word}': {error}")
+        return None
