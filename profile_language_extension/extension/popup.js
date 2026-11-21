@@ -1,21 +1,19 @@
+
 const form = document.querySelector("#profile-form");
 const statusMessage = document.querySelector("#status");
 const saveButton = document.querySelector("#save-button");
 
+const API_URL = "http://127.0.0.1:8000/api/profile";
+const VOCABULARY_API_URL = "http://127.0.0.1:8000/api/vocabulary";
+
 const analyzeButton = document.querySelector("#analyze-page-button");
 const vocabularyStatus = document.querySelector("#vocabulary-status");
-const vocabularyResults = document.querySelector("#vocabulary-results");
-
-// Python backend URLs
-const PROFILE_API_URL = "http://127.0.0.1:8000/api/profile";
-const VOCABULARY_API_URL = "http://127.0.0.1:8000/api/vocabulary";
 
 function showStatus(message, type = "") {
   statusMessage.textContent = message;
   statusMessage.className = `status ${type}`;
 }
 
-// Load the previously saved user profile.
 async function loadProfile() {
   const local = await browser.storage.local.get("profile");
   const profile = local.profile;
@@ -24,21 +22,16 @@ async function loadProfile() {
 
   document.querySelector("#display-name").value =
     profile.displayName || "";
-
   document.querySelector("#native-language").value =
     profile.nativeLanguage || "";
-
   document.querySelector("#target-language").value =
     profile.targetLanguage || "";
-
   document.querySelector("#notes").value =
     profile.notes || "";
 }
 
-// Save the user's profile locally and sync it with the backend.
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-
   if (!form.reportValidity()) return;
 
   const profile = {
@@ -54,17 +47,15 @@ form.addEventListener("submit", async (event) => {
   }
 
   saveButton.disabled = true;
-  showStatus("Saving…");
+  showStatus("Saving...");
 
   try {
     await browser.storage.local.set({ profile });
 
     try {
-      const response = await fetch(PROFILE_API_URL, {
+      const response = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profile)
       });
 
@@ -73,172 +64,126 @@ form.addEventListener("submit", async (event) => {
       }
 
       showStatus("Profile saved and synced successfully.", "success");
-
     } catch (apiError) {
       console.warn("Backend sync unavailable:", apiError);
-      showStatus(
-        "Saved on this browser. Backend sync is unavailable.",
-        "success"
-      );
+      showStatus("Saved locally. Backend sync is unavailable.", "success");
     }
-
   } catch (error) {
     console.error(error);
-    showStatus("Could not save profile. Please try again.", "error");
-
+    showStatus("Could not save profile.", "error");
   } finally {
     saveButton.disabled = false;
   }
 });
 
-// Get webpage content from content.js.
-async function getCurrentPageContent() {
-  const tabs = await browser.tabs.query({
-    active: true,
-    currentWindow: true
-  });
+// Convert the webpage's HTML language attribute into a language
+// name accepted by the backend's spaCy language-model mapping.
+function getSourceLanguage(languageAttribute) {
+  const languageCodes = {
+    en: "english",
+    es: "spanish",
+    fr: "french",
+    de: "german",
+    it: "italian",
+    pt: "portuguese",
+    zh: "chinese",
+    ja: "japanese",
+    ko: "korean",
+    nl: "dutch",
+    ru: "russian"
+  };
 
-  if (!tabs.length || !tabs[0].id) {
-    throw new Error("Could not find the current browser tab.");
-  }
+  const code = (languageAttribute || "en")
+    .toLowerCase()
+    .split("-")[0];
+
+  return languageCodes[code] || "english";
+}
+
+async function analyzeCurrentPage() {
+  analyzeButton.disabled = true;
+  vocabularyStatus.textContent = "Reading webpage...";
 
   try {
+    const local = await browser.storage.local.get("profile");
+    const profile = local.profile;
+
+    if (!profile?.targetLanguage) {
+      throw new Error("Please save your profile and choose a target language first.");
+    }
+
+    const tabs = await browser.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+    const activeTab = tabs[0];
+
+    if (!activeTab?.id) {
+      throw new Error("Could not find the active browser tab.");
+    }
+
+    // Ask content.js to extract the webpage text.
     const pageInfo = await browser.tabs.sendMessage(
-      tabs[0].id,
+      activeTab.id,
       { type: "GET_PAGE_CONTENT" }
     );
 
-    if (!pageInfo || !pageInfo.text) {
-      throw new Error("No readable webpage text was found.");
+    if (!pageInfo?.text || pageInfo.text.length < 40) {
+      throw new Error("Not enough readable webpage text was found.");
     }
 
-    return pageInfo;
+    vocabularyStatus.textContent = "Processing vocabulary and translations...";
 
-  } catch (error) {
-    throw new Error(
-      "Could not read this webpage. Make sure it is a supported website and reload the page."
-    );
-  }
-}
+    // Send the extracted text to the Python backend.
+    const response = await fetch(VOCABULARY_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: pageInfo.text,
+        language: getSourceLanguage(pageInfo.language),
+        target_language: profile.targetLanguage,
+        max_results: 20
+      })
+    });
 
-// Send webpage text to the Python vocabulary API.
-async function requestVocabulary(pageInfo) {
+    if (!response.ok) {
+      let detail = `Vocabulary API returned ${response.status}.`;
 
-  // Get the saved user profile.
-  const local = await browser.storage.local.get("profile");
-  const profile = local.profile;
+      try {
+        const errorData = await response.json();
+        detail = errorData.detail || detail;
+      } catch {
+        // Keep the default error message.
+      }
 
-  if (!profile || !profile.targetLanguage) {
-    throw new Error(
-      "Please save your profile and choose a target language first."
-    );
-  }
-
-  const response = await fetch(VOCABULARY_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      text: pageInfo.text,
-      language: pageInfo.language || "english",
-      target_language: profile.targetLanguage,
-      max_results: 20
-    })
-  });
-
-  if (!response.ok) {
-    let errorMessage = "Could not retrieve vocabulary.";
-
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.detail || errorMessage;
-    } catch {
-      // Use the default error message.
+      throw new Error(detail);
     }
 
-    throw new Error(errorMessage);
-  }
+    const result = await response.json();
 
-  return await response.json();
-}
-
-// Display vocabulary results in the extension popup.
-function displayVocabulary(vocabulary) {
-
-  vocabularyResults.replaceChildren();
-
-  if (!vocabulary || vocabulary.length === 0) {
-    vocabularyResults.textContent =
-      "No vocabulary words were found.";
-
-    return;
-  }
-
-  vocabulary.forEach((item) => {
-
-    const card = document.createElement("div");
-    card.className = "vocabulary-card";
-
-    const word = document.createElement("h3");
-    word.textContent = item.word;
-
-    const translation = document.createElement("p");
-    translation.className = "vocabulary-translation";
-    translation.textContent =
-      `Translation: ${item.translation}`;
-
-    const details = document.createElement("p");
-    details.className = "vocabulary-details";
-    details.textContent =
-      `Frequency: ${item.frequency} | Part of speech: ${item.part_of_speech}`;
-
-    const example = document.createElement("p");
-    example.className = "vocabulary-example";
-    example.textContent =
-      `Example: ${item.example}`;
-
-    card.append(
-      word,
-      translation,
-      details,
-      example
-    );
-
-    vocabularyResults.appendChild(card);
-  });
-}
-
-// Main button action: read page, analyze it, and display the results.
-analyzeButton.addEventListener("click", async () => {
-  analyzeButton.disabled = true;
-  vocabularyResults.replaceChildren();
-  vocabularyStatus.textContent = "Reading webpage…";
-
-  try {
-    const pageInfo = await getCurrentPageContent();
+    // Send the API results back to content.js for display in the webpage.
+    await browser.tabs.sendMessage(activeTab.id, {
+      type: "DISPLAY_VOCABULARY",
+      payload: result
+    });
 
     vocabularyStatus.textContent =
-      `Analyzing "${pageInfo.title}"…`;
-
-    const result = await requestVocabulary(pageInfo);
-
-    displayVocabulary(result.vocabulary);
-
-    vocabularyStatus.textContent =
-      `Found ${result.vocabulary.length} vocabulary items.`;
+      `Displayed ${result.vocabulary?.length || 0} vocabulary words on the webpage.`;
 
   } catch (error) {
-    console.error("Vocabulary extraction error:", error);
+    console.error("Vocabulary analysis failed:", error);
     vocabularyStatus.textContent = error.message;
-
   } finally {
     analyzeButton.disabled = false;
   }
-});
+}
 
-// Load the saved profile when the popup opens.
-loadProfile().catch((error) => {
+analyzeButton.addEventListener("click", analyzeCurrentPage);
+
+loadProfile().catch(error => {
   console.error("Could not load saved profile:", error);
   showStatus("Could not load saved profile.", "error");
 });

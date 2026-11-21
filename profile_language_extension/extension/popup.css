@@ -157,3 +157,40 @@ footer { margin-top: 12px; color: var(--muted); font-size: 11px; text-align: cen
   color: #21804b;
   margin: 5px 0;
 }
+
+
+.vocabulary-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #ddd;
+}
+
+.vocabulary-section h2 {
+  margin-bottom: 12px;
+}
+
+#analyze-page-button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background-color: #2878d0;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#analyze-page-button:hover {
+  background-color: #1c5fa9;
+}
+
+#analyze-page-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#vocabulary-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #555;
+}
